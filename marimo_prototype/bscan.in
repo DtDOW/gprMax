@@ -1,0 +1,16 @@
+#title: Quick gprMax test
+
+#domain: 0.1 0.1 0.1
+#dx_dy_dz: 0.01 0.01 0.01
+#time_window: 5e-9
+#pml_cells: 2
+
+#material: 4 0 1 0 soil
+
+#waveform: ricker 1 5e8 pulse
+
+#hertzian_dipole: z 0.05 0.05 0.05 pulse
+
+#rx: 0.06 0.05 0.05
+
+#box: 0 0 0 0.1 0.1 0.03 soil
