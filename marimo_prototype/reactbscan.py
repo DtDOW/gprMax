@@ -1,3 +1,14 @@
+"""
+Prototype Note:
+
+This implementation was my first method and currently runs gprMax using the CLI via subprocess.
+This approach ensures stability and compatibility with the existing workflow.
+
+Future Work:
+This will be upgraded to directly interface with gprMax similar to "reactascan.py",
+enabling reactive simulations and tighter integration with marimo.
+"""
+
 import marimo as mo
 import numpy as np
 import matplotlib.pyplot as plt
