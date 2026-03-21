@@ -18,6 +18,7 @@ def _():
 # UI
 @app.cell
 def _(mo):
+# Here we are creating the title symbol (gprMax)
 
     title = mo.md("""
 <div style="font-size:40px;font-weight:800;text-align:center;margin:0;padding:0;">
@@ -27,7 +28,10 @@ def _(mo):
 <hr style="border-color:#d1d5db;margin:6px 0 12px 0;">
 """)
 
-    #base_file = mo.ui.text(label="Base gprMax input file", value="my_test0.in")
+# We are defining numbers to enter here with a given value. 
+# I am not specifically using slider as getting an exact value in slider is a bit rigerous
+# where as entering a value is more easy with no uper limit
+# but they can be changed to slider by replacing "mo.ui.number()" with "mo.ui.slider()"
 
     dx = mo.ui.number(value=0.02, step=0.001, label="dx (m)")
     dy = mo.ui.number(value=0.02, step=0.001, label="dy (m)")
@@ -70,6 +74,7 @@ def _(mo):
 
     return dx,dy,dz,domain_x,domain_y,domain_z,eps,sigma,mur,sigma_m,material_name,amplitude,frequency,waveform_name,direction,src_x,src_y,src_z,rx_x,rx_y,rx_z,run_button,sidebar
 
+#Here we are are creating a sidebar similar to how VS code have. 
 
 @app.cell
 def _(mo, sidebar):
@@ -82,12 +87,13 @@ def _(mo, sidebar):
 @app.cell
 def _(mo,dx,dy,dz,domain_x,domain_y,domain_z,eps,sigma,mur,sigma_m,material_name,amplitude,frequency,waveform_name,direction,src_x,src_y,src_z,rx_x,rx_y,rx_z,run_button,sidebar):
 
-    #import subprocess
-    #from react_run_gprmax_api import run_gprmax
     from react_model_builder import GPRMaxModel
     from react_run_simulation import run_model
 
+    # Here we are copying the predefined model
     model = GPRMaxModel()
+
+    # We are updating the value of the parameters of those models
 
     model.dx = dx.value
     model.dy = dy.value
@@ -109,6 +115,8 @@ def _(mo,dx,dy,dz,domain_x,domain_y,domain_z,eps,sigma,mur,sigma_m,material_name
     model.receiver["z"] = rx_z.value
 
     simulation_output, logs = run_model(model)
+
+    # Creating a log pannel 
 
     import re
 
@@ -134,7 +142,8 @@ gprMax Simulation Logs
     return simulation_output, log_panel
 
 
-# PLOT OUTPUT
+# Plot Output
+#here we are plotting using PREDEFINED FUNCTIONS to build upon existing architeture. 
 
 @app.cell
 def _(simulation_output, mpl_plot):
@@ -149,7 +158,7 @@ def _(simulation_output, mpl_plot):
 
     fig
 
-
+# Plot the log Pannel
 @app.cell
 def _(mo, fig, log_panel):
 

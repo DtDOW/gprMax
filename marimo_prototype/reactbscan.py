@@ -27,7 +27,7 @@ def _():
 
 @app.cell
 def _(mo):
-
+    # Here we are creating the title symbol (gprMax)
     title = mo.md("""
 <div style="font-size:40px;font-weight:800;text-align:center;margin:0;padding:0;">
 <span style="color:#2563eb">gpr</span><span style="color:#1f2937">MAX</span>
@@ -35,6 +35,10 @@ def _(mo):
 <hr style="border-color:#d1d5db;margin:6px 0 12px 0;">
 """)
 
+    # We are defining numbers to enter here with a given value. 
+    # I am not specifically using slider as getting an exact value in slider is a bit rigerous
+    # where as entering a value is more easy with no uper limit
+    # but they can be changed to slider by replacing "mo.ui.number()" with "mo.ui.slider()"
     # Bscan Parameters
     start = mo.ui.number(value=0, step=0.01, label="Start Position (m)")
     end = mo.ui.number(value=0.06, step=0.01, label="End Position (m)")
@@ -130,13 +134,15 @@ def _(mo):
         sidebar
     )
 
-# Sidebar 
+# Creating sidebar 
 
 @app.cell
 def _(mo, sidebar):
     mo.sidebar(sidebar)
 
 # Run gprMax
+# Right now we are following CLI based run for Bscan, but in future model I will be transforming it. 
+# Similar to Ascan by directly calling python API to run Bscan with a predefined model
 
 @app.cell
 def _(start,end,step,
@@ -199,22 +205,10 @@ def _(start,end,step,
     _ = subprocess.run(cmd, shell=True)
 
     return new_file, n
+    
 
+#Here we are merging filed using the predefined function to build upon existing architeture
 
-@app.cell
-# def _(new_file, subprocess):
-
-#     base = new_file.replace(".in", "")
-
-#     merge_cmd = f"python tools/outputfiles_merge.py {base}"
-
-#     print("Merging outputs")
-
-#     subprocess.run(merge_cmd, shell=True)
-
-#     merged_file = base + "_merged.out"
-
-#     return merged_file
 @app.cell
 def _(new_file):
 
@@ -251,6 +245,7 @@ def _(merged_file, np,field_component):
 
     return data, dt, rxnumber, field
 
+#here we are plotting using PREDEFINED FUNCTION to build upon existing architeture. 
 
 @app.cell
 def _(merged_file, data, dt, rxnumber,field):
@@ -264,31 +259,5 @@ def _(merged_file, data, dt, rxnumber,field):
 
     fig
 
-# @app.cell
-# def _(new_file):
-
-#     import os
-#     import glob
-
-#     _base = new_file.replace(".in", "")
-
-#     print("Cleaning temporary output files...")
-
-#     _merged_file = _base + "_merged.out"
-
-#     # find all .out files
-#     files = glob.glob(_base + "*.out")
-
-#     for _f in files:
-#         # skip merged file
-#         if _f == _merged_file:
-#             continue
-
-#         try:
-#             os.remove(_f)
-#         except:
-#             pass
-
-#     print("Cleanup complete.")
 
 app.run()
