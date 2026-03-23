@@ -4,6 +4,16 @@
 
 ---
 
+## Changelog
+
+### 23 March 2026
+- **B-scan migrated from CLI to Python API** — `reactbscan.py` no longer uses `subprocess` to call gprMax. It now interfaces directly with `gprMax.gprMax.api`, consistent with the A-scan approach.
+- Added `react_bscan_model.py` — a dedicated `GPRMaxBscanModel` class that builds B-scan `.in` file content programmatically, with support for scan axis, scan target (source / receiver / both), and per-step position updates.
+- Added `react_bscan_runner.py` — handles per-step model generation, simulation execution, output merging via `tools.outputfiles_merge`, and HDF5 data extraction.
+- `bscan.in` template file is no longer required for B-scan runs.
+
+---
+
 ## Overview
 
 This prototype integrates **marimo** into [gprMax](https://github.com/gprMax/gprMax) to replace static `.in` file editing with a live, reactive GUI. All simulation parameters (domain, material, waveform, source, receiver) are exposed as interactive controls in the browser. Changing any value immediately propagates through the notebook — no manual re-running of cells required.
@@ -13,7 +23,7 @@ Two workflows are supported:
 | Workflow | File | Simulation method |
 |---|---|---|
 | **A-scan** | `reactascan.py` | Python API (`gprMax.gprMax.main()`) |
-| **B-scan** | `reactbscan.py` | CLI via `subprocess`, then `outputfiles_merge` |
+| **B-scan** | `reactbscan.py` | Python API (`gprMax.gprMax.api`) |
 
 ---
 
@@ -25,13 +35,11 @@ marimo run reactascan.py
 ```
 Adjust the parameters in the sidebar, then click **Run Simulation** to see the trace.
 
-**B-scan** — radargram (make sure `bscan.in` is in the same folder):
+**B-scan** — radargram:
 ```bash
 marimo run reactbscan.py
 ```
 Set the B-scan start, end, and step positions in the sidebar. The app runs all traces automatically and displays the radargram.
-
-> **NOTE: THE B-SCAN CURRENTLY RUNS GPRMAX VIA THE CLI. IT WILL BE TRANSFORMED TO USE THE PYTHON API DIRECTLY TO RUN SIMULATIONS, IN LINE WITH THE A-SCAN APPROACH.**
 
 **To edit the code while using the UI:**
 ```bash
@@ -47,9 +55,10 @@ marimo edit reactbscan.py
 marimo_prototype/
 ├── reactascan.py           # Marimo app: single-trace (A-scan) workflow
 ├── reactbscan.py           # Marimo app: multi-trace (B-scan) workflow
-├── react_model_builder.py  # GPRMaxModel class — builds .in file content
-├── react_run_simulation.py # Runs gprMax via Python API, returns logs
-└── bscan.in                # Template .in file used by the B-scan runner
+├── react_model_builder.py  # GPRMaxModel class — builds .in file content (A-scan)
+├── react_run_simulation.py # Runs gprMax via Python API, returns logs (A-scan)
+├── react_bscan_model.py    # GPRMaxBscanModel class — builds .in file content (B-scan)
+└── react_bscan_runner.py   # Runs B-scan via Python API, merges outputs, extracts data
 ```
 
 ---
@@ -99,11 +108,60 @@ output_file, logs = run_model(model)
 
 ---
 
-### `bscan.in` — B-scan template
+### `react_bscan_model.py` — `GPRMaxBscanModel`
 
-A minimal gprMax input file used as the **base template** for B-scan runs. The B-scan runner reads this file line-by-line and rewrites any parameter line that matches a UI-controlled field before saving to `temp_bscan.in`.
+A dedicated model class for B-scan simulations. Holds all simulation parameters and generates `.in` file content via `build_input()`. Supports configurable scan axis (`x`, `y`, or `z`) and scan target (`source`, `receiver`, or `both`).
 
-Default scene: 0.1 × 0.1 × 0.1 m domain, soil half-space (ε=4), Ricker wavelet at 500 MHz, z-directed dipole, a receiver offset 0.01 m in x, and a 3 cm soil box at the base.
+**Default configuration:**
+
+| Parameter | Default |
+|---|---|
+| Spatial resolution (dx/dy/dz) | 0.01 m |
+| Domain | 0.1 × 0.1 × 0.1 m |
+| Time window | 5 ns |
+| PML cells | 2 |
+| Material (ε, σ, μr, σm) | 4, 0.0, 1, 0 — `soil` |
+| Waveform | Ricker, 1 V/m, 100 MHz — `pulse` |
+| Source (z-dir) | (0.05, 0.05, 0.05) m |
+| Receiver | (0.06, 0.05, 0.05) m |
+| Scan range | 0.0 → 0.06 m, step 0.02 m |
+| Scan axis / target | x / source |
+| Field component | Ez |
+
+**Usage:**
+```python
+from react_bscan_model import GPRMaxBscanModel
+
+model = GPRMaxBscanModel()
+model.start = 0.0
+model.end = 0.1
+model.step = 0.01
+print(model.build_input())
+```
+
+---
+
+### `react_bscan_runner.py` — `run_bscan()` / `extract_bscan_data()`
+
+Drives the full B-scan pipeline entirely via the Python API — no subprocess calls.
+
+**`run_bscan(model)`**
+- Computes scan positions from `model.start`, `model.end`, `model.step`.
+- For each position: deep-copies the model, updates the scan axis coordinate, writes a numbered `temp_bscanN.in` file, and calls `gprMax.gprMax.api`.
+- Merges all per-trace `.out` files using `tools.outputfiles_merge.merge_files()`.
+- Returns the path to the merged HDF5 file (`temp_bscan_merged.out`).
+
+**`extract_bscan_data(merged_file, field)`**
+- Opens the merged HDF5 file with `h5py`.
+- Reads the chosen field component (e.g. `Ez`) across all receivers.
+- Returns `(data, dt, nrx, field)` ready for plotting.
+
+```python
+from react_bscan_runner import run_bscan, extract_bscan_data
+
+merged_file = run_bscan(model)
+data, dt, nrx, field = extract_bscan_data(merged_file, "Ez")
+```
 
 ---
 
@@ -147,21 +205,16 @@ A marimo app for running a multi-trace B-scan survey and rendering the radargram
 
 The number of traces is computed as:
 ```
-n = int((end - start) / step) + 1
+n = floor((end - start) / step) + 1
 ```
 
 **App flow:**
 
-1. `bscan.in` is read and every recognised command line is overwritten with the current UI values, producing `temp_bscan.in`.
-2. gprMax is called via `subprocess`:
-   ```
-   python -m gprMax temp_bscan.in -n <n>
-   ```
+1. UI values are applied to a `GPRMaxBscanModel` instance.
+2. `run_bscan()` iterates over scan positions — each step writes a temporary `.in` file and calls `gprMax.gprMax.api` directly.
 3. Per-trace `.out` files are merged with `tools.outputfiles_merge.merge_files()`, producing `temp_bscan_merged.out`.
-4. The merged HDF5 file is opened with `h5py`; the chosen field component (Ex/Ey/Ez/Hx/Hy/Hz) is read across all receivers.
+4. `extract_bscan_data()` reads the chosen field component across all receivers from the merged HDF5 file.
 5. `tools.plot_Bscan.mpl_plot` renders the radargram.
-
-> **Prototype note (from source):** The B-scan runner currently uses `subprocess` for stability. A future version will switch to the direct Python API approach used in `reactascan.py`.
 
 **Run:**
 ```bash
