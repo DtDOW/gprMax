@@ -39,6 +39,7 @@ def _(mo):
     # I am not specifically using slider as getting an exact value in slider is a bit rigerous
     # where as entering a value is more easy with no uper limit
     # but they can be changed to slider by replacing "mo.ui.number()" with "mo.ui.slider()"
+
     # Bscan Parameters
     start = mo.ui.number(value=0, step=0.01, label="Start Position (m)")
     end = mo.ui.number(value=0.06, step=0.01, label="End Position (m)")
@@ -144,104 +145,65 @@ def _(mo, sidebar):
 # Right now we are following CLI based run for Bscan, but in future model I will be transforming it. 
 # Similar to Ascan by directly calling python API to run Bscan with a predefined model
 
+#Transfomred to Python API based on 23/03/2026 
+
 @app.cell
 def _(start,end,step,
         dx,dy,dz,domain_x,domain_y,domain_z,
         eps,sigma,mur,sigma_m,material_name,
         amplitude,frequency,waveform_name,
         direction,src_x,src_y,src_z,
-        rx_x,rx_y,rx_z,subprocess):
+        rx_x,rx_y,rx_z):
 
-    # number of bscan
-    n = int((end.value - start.value) / step.value) + 1
+    from react_bscan_model import GPRMaxBscanModel
+    from react_bscan_runner import run_bscan
 
-    base_input = "bscan.in"
+    model = GPRMaxBscanModel()
 
-    
-    with open(base_input) as f:
-        lines = f.readlines()
+    model.start = start.value
+    model.end = end.value
+    model.step = step.value
 
-    new_lines = []
+    model.dx = dx.value
+    model.dy = dy.value
+    model.dz = dz.value
 
-    for line in lines:
-        
-        if line.startswith("#dx_dy_dz"):
-            new_lines.append(f"#dx_dy_dz: {dx.value} {dy.value} {dz.value}\n")
+    model.domain_x = domain_x.value
+    model.domain_y = domain_y.value
+    model.domain_z = domain_z.value
 
-        elif line.startswith("#domain"):
-            new_lines.append(f"#domain: {domain_x.value} {domain_y.value} {domain_z.value}\n")
+    model.eps = eps.value
+    model.sigma = sigma.value
+    model.mur = mur.value
+    model.sigma_m = sigma_m.value
+    model.material_name = material_name.value
 
-        elif line.startswith("#material"):
-            new_lines.append(f"#material: {eps.value} {sigma.value} {mur.value} {sigma_m.value} {material_name.value}\n")
+    model.amplitude = amplitude.value
+    model.frequency = frequency.value
+    model.waveform_name = waveform_name.value
 
-        elif line.startswith("#waveform"):
-            new_lines.append(f"#waveform: gaussian {amplitude.value} {frequency.value} {waveform_name.value}\n")
+    model.direction = direction.value
+    model.src_x = src_x.value
+    model.src_y = src_y.value
+    model.src_z = src_z.value
 
-        elif line.startswith("#hertzian_dipole"):
-            new_lines.append(
-                f"#hertzian_dipole: {direction.value} {src_x.value} {src_y.value} {src_z.value} {waveform_name.value}\n"
-            )
+    model.rx_x = rx_x.value
+    model.rx_y = rx_y.value
+    model.rx_z = rx_z.value
 
-        elif line.startswith("#rx"):
-            new_lines.append(
-                f"#rx: {rx_x.value} {rx_y.value} {rx_z.value}\n"
-            )
+    merged_file = run_bscan(model)
 
-        else:
-            new_lines.append(line)
+    return merged_file, model.field
 
-
-    new_file = "temp_bscan.in"
-
-    with open(new_file, "w") as f:
-        f.writelines(new_lines)
-
-
-    cmd = f"python -m gprMax {new_file} -n {n}"
-
-    print("Running:", cmd)
-
-    #subprocess.run(cmd, shell=True)
-    _ = subprocess.run(cmd, shell=True)
-
-    return new_file, n
-    
-
-#Here we are merging filed using the predefined function to build upon existing architeture
+# Merging the files to give one file to plot. 
 
 @app.cell
-def _(new_file):
+def _(merged_file, field_component):
 
-    from tools.outputfiles_merge import merge_files
-
-    base = new_file.replace(".in", "")
-
-    print("Merging outputs")
-
-    merge_files(base, removefiles=True)
-
-    merged_file = base + "_merged.out"
-
-    return merged_file
-
-
-@app.cell
-def _(merged_file, np,field_component):
-    import h5py
-
-    _f = h5py.File(merged_file, "r")
-
-    rxnumber = len(_f["rxs"])
-    dt = _f.attrs["dt"]
-
-    data = []
-
+    from react_bscan_runner import extract_bscan_data
     field = field_component.value
 
-    for i in range(1, rxnumber + 1):
-        data.append(_f[f"rxs/rx{i}/{field}"][:])
-
-    data = np.array(data).T
+    data, dt,rxnumber, field = extract_bscan_data(merged_file, field)
 
     return data, dt, rxnumber, field
 
@@ -260,4 +222,5 @@ def _(merged_file, data, dt, rxnumber,field):
     fig
 
 
-app.run()
+if __name__ == "__main__":
+    app.run()
