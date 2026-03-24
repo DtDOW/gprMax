@@ -18,7 +18,7 @@ def _():
 # UI
 @app.cell
 def _(mo):
-# Here we are creating the title symbol (gprMax)
+    # Here we are creating the title symbol (gprMax)
 
     title = mo.md("""
 <div style="font-size:40px;font-weight:800;text-align:center;margin:0;padding:0;">
@@ -28,10 +28,10 @@ def _(mo):
 <hr style="border-color:#d1d5db;margin:6px 0 12px 0;">
 """)
 
-# We are defining numbers to enter here with a given value. 
-# I am not specifically using slider as getting an exact value in slider is a bit rigerous
-# where as entering a value is more easy with no uper limit
-# but they can be changed to slider by replacing "mo.ui.number()" with "mo.ui.slider()"
+    # We are defining numbers to enter here with a given value. 
+    # I am not specifically using slider as getting an exact value in slider is a bit rigerous
+    # where as entering a value is more easy with no uper limit
+    # but they can be changed to slider by replacing "mo.ui.number()" with "mo.ui.slider()"
 
     dx = mo.ui.number(value=0.02, step=0.001, label="dx (m)")
     dy = mo.ui.number(value=0.02, step=0.001, label="dy (m)")

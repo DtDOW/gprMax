@@ -1,5 +1,6 @@
-import gprMax.gprMax
-import sys
+# react_run_simulation.py
+
+from gprMax.gprMax import api as run
 import io
 import contextlib
 
@@ -8,15 +9,18 @@ def run_model(model):
 
     temp_file = "temp_model.in"
 
-    with open(temp_file,"w") as f:
+    # Write input file
+    with open(temp_file, "w") as f:
         f.writelines(model.to_in_file())
 
-    sys.argv = ["gprMax", temp_file]
-
+    # Capture logs
     log_stream = io.StringIO()
 
     with contextlib.redirect_stdout(log_stream):
-        gprMax.gprMax.main()
+        run(
+            inputfile=temp_file,
+            n=1
+        )
 
     logs = log_stream.getvalue()
 
