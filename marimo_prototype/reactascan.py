@@ -1,32 +1,34 @@
-import marimo as mo
+import marimo
 
-app = mo.App()
+__generated_with = "0.20.4"
+app = marimo.App()
 
 
 @app.cell
 def _():
     import marimo as mo
-    return mo
+
+    return (mo,)
 
 
 @app.cell
 def _():
     from tools.plot_Ascan import mpl_plot
-    return mpl_plot
+
+    return (mpl_plot,)
 
 
-# UI
 @app.cell
 def _(mo):
     # Here we are creating the title symbol (gprMax)
 
     title = mo.md("""
-<div style="font-size:40px;font-weight:800;text-align:center;margin:0;padding:0;">
-<span style="color:#2563eb">gpr</span><span style="color:#1f2937">MAX</span>
-</div>
+    <div style="font-size:40px;font-weight:800;text-align:center;margin:0;padding:0;">
+    <span style="color:#2563eb">gpr</span><span style="color:#1f2937">MAX</span>
+    </div>
 
-<hr style="border-color:#d1d5db;margin:6px 0 12px 0;">
-""")
+    <hr style="border-color:#d1d5db;margin:6px 0 12px 0;">
+    """)
 
     # We are defining numbers to enter here with a given value. 
     # I am not specifically using slider as getting an exact value in slider is a bit rigerous
@@ -62,7 +64,14 @@ def _(mo):
     rx_y = mo.ui.number(value=0.05, step=0.01, label="Receiver y (m)")
     rx_z = mo.ui.number(value=0.04, step=0.01, label="Receiver z (m)")
 
-    run_button = mo.ui.button(label="Run Simulation")
+    #I tried using mo.ui.button but due to some issues it wasnt working properly
+    #I upgraded it to this temperory solution for now where it breaks like a MCB (Miniuatre Circuit Breaker)
+    #When value is non zero it computes simulation but when it is 0 you can enter multiple parameters without simulation running.
+    #Thus it saves computational power and time. I WILL BE WORKING ON A MORE ROBUST SOLUTION
+
+    run_button = mo.ui.number(
+    value=1, step = 1, label="Run Simulation"
+    )
 
     domain_section = mo.accordion({"Domain":mo.vstack([dx,dy,dz,domain_x,domain_y,domain_z])})
     material_section = mo.accordion({"Material":mo.vstack([eps,sigma,mur,sigma_m,material_name])})
@@ -71,21 +80,53 @@ def _(mo):
     receiver_section = mo.accordion({"Receiver":mo.vstack([rx_x,rx_y,rx_z])})
 
     sidebar = mo.vstack([title,domain_section,material_section,waveform_section,source_section,receiver_section,run_button])
+    return (
+        domain_x,
+        domain_y,
+        domain_z,
+        dx,
+        dy,
+        dz,
+        eps,
+        frequency,
+        rx_x,
+        rx_y,
+        rx_z,
+        sidebar,
+        sigma,
+        src_x,
+        src_y,
+        src_z,
+        run_button
+    )
 
-    return dx,dy,dz,domain_x,domain_y,domain_z,eps,sigma,mur,sigma_m,material_name,amplitude,frequency,waveform_name,direction,src_x,src_y,src_z,rx_x,rx_y,rx_z,run_button,sidebar
-
-#Here we are are creating a sidebar similar to how VS code have. 
 
 @app.cell
 def _(mo, sidebar):
     mo.sidebar(sidebar)
+    return
 
-
-
-# Run gprMax and capture logs
 
 @app.cell
-def _(mo,dx,dy,dz,domain_x,domain_y,domain_z,eps,sigma,mur,sigma_m,material_name,amplitude,frequency,waveform_name,direction,src_x,src_y,src_z,rx_x,rx_y,rx_z,run_button,sidebar):
+def _(
+    domain_x,
+    domain_y,
+    domain_z,
+    dx,
+    dy,
+    dz,
+    eps,
+    frequency,
+    mo,
+    rx_x,
+    rx_y,
+    rx_z,
+    sigma,
+    src_x,
+    src_y,
+    src_z,
+    run_button
+):
 
     from react_model_builder import GPRMaxModel
     from react_run_simulation import run_model
@@ -114,39 +155,34 @@ def _(mo,dx,dy,dz,domain_x,domain_y,domain_z,eps,sigma,mur,sigma_m,material_name
     model.receiver["y"] = rx_y.value
     model.receiver["z"] = rx_z.value
 
-    simulation_output, logs = run_model(model)
+    logs = []
 
-    # Creating a log pannel 
-
-    import re
-
-    ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-    cleaned_logs = ansi_escape.sub('', logs)
+    if run_button.value != 0:
+        simulation_output, logs = run_model(model)
+    else:
+        simulation_output = None
+    log_text = logs
 
     log_panel = mo.md(f"""
-<div style="
-background:#0f172a;
-color:#e5e7eb;
-font-family:monospace;
-padding:12px;
-border-radius:8px;
-height:400px;
-overflow-y:auto;
-">
-gprMax Simulation Logs
-<hr style="border-color:#374151;">
-<pre>{cleaned_logs}</pre>
-</div>
-""")
+    # <div style="
+    # background:#0f172a;
+    # color:#e5e7eb;
+    # font-family:monospace;
+    # padding:12px;
+    # border-radius:8px;
+    # height:400px;
+    # overflow-y:auto;
+    # ">
+    # gprMax Simulation Logs
+    # <hr style="border-color:#374151;">
+    # <pre>{log_text}</pre>
+    # </div>
+    # """)
+    return (simulation_output,)
 
-    return simulation_output, log_panel
-
-
-# Plot Output
-#here we are plotting using PREDEFINED FUNCTIONS to build upon existing architeture. 
 
 @app.cell
-def _(simulation_output, mpl_plot):
+def _(mpl_plot, simulation_output):
 
     import matplotlib.pyplot as plt
 
@@ -157,19 +193,7 @@ def _(simulation_output, mpl_plot):
         fig = plt.gcf()
 
     fig
-
-# Plot the log Pannel
-@app.cell
-def _(mo, fig, log_panel):
-
-    if fig is None:
-        layout = mo.md("Run a simulation to see results.")
-    else:
-        layout = mo.vstack([
-            log_panel
-        ])
-
-    layout
+    return
 
 
 if __name__ == "__main__":
