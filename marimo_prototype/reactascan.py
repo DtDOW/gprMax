@@ -162,22 +162,8 @@ def _(
     else:
         simulation_output = None
     log_text = logs
-
-    log_panel = mo.md(f"""
-    # <div style="
-    # background:#0f172a;
-    # color:#e5e7eb;
-    # font-family:monospace;
-    # padding:12px;
-    # border-radius:8px;
-    # height:400px;
-    # overflow-y:auto;
-    # ">
-    # gprMax Simulation Logs
-    # <hr style="border-color:#374151;">
-    # <pre>{log_text}</pre>
-    # </div>
-    # """)
+    
+    log_pannel = mo.md(f"{log_text}")
     return (simulation_output,)
 
 
