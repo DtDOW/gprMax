@@ -6,6 +6,9 @@
 
 ## Changelog
 
+## 27 March 2026 
+- **Live Log Implementation** — `react_run_simulation.py` cleaned code along with a better and easier to understand structure. 
+
 ## 25 March 2026 
 - **Live Log Implementation** — `reactascan.py` can now show logs while processing takes place with the help of ` mo.output.replace()`
 - **Tried implementing contolled run** — `reactascan.py`can now do controlled run if user wants to enter multiple parameters. Currently its a bit shabby as user will need to change the default state again and again using `Run Simulation` at the bottom of sidebar. I will further upgrade it to be more user friendly and robust. 
