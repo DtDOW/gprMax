@@ -155,15 +155,11 @@ def _(
     model.receiver["y"] = rx_y.value
     model.receiver["z"] = rx_z.value
 
-    logs = []
-
     if run_button.value != 0:
-        simulation_output, logs = run_model(model)
+        simulation_output, _ = run_model(model)
     else:
         simulation_output = None
-    log_text = logs
-    
-    log_pannel = mo.md(f"{log_text}")
+
     return (simulation_output,)
 
 
